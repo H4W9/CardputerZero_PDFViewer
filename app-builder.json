@@ -1,0 +1,44 @@
+{
+  "package_name": "czpdf",
+  "version": "0.1.2",
+  "app_name": "PDF Viewer",
+  "bin_name": "czpdf",
+  "description": "PDF viewer for the Cardputer Zero",
+  "runtime": "legacy-deb-only",
+  "caps": [
+    "keyboard",
+    "filesystem"
+  ],
+  "store": {
+    "summary": "Read PDF files on your Cardputer Zero, with zoom, search and a text mode",
+    "description": "Pick a PDF from your folders or recent files and read it on the Cardputer.\n\nWhat it can do:\n- Fit to width or show the whole page, zoom in and out, rotate\n- Scroll straight from one page into the next\n- Text mode: the words of the page wrapped to fit the screen, in any size\n- Search the whole document, with matches marked on the page\n- Contents list from the PDF's outline, go to any page\n- Night colours\n- Opens password protected files\n- Remembers the page you were on in every file\n- Uses the whole 2.8in EXT display if you have DisplayMOD, and the built-in screen keeps its own full view\n\nF X Z C work as the arrows printed on them and L M as Page Up and Down, no Fn needed. Press Fn+H on any screen for the keys.\n\nCopy PDFs over with Airfiles, SFTP or a USB stick.",
+    "categories": [
+      "Creative & Office"
+    ],
+    "screenshots": [
+      "store/screenshots/browser.png",
+      "store/screenshots/page-width.png",
+      "store/screenshots/whole-page.png",
+      "store/screenshots/text-mode.png",
+      "store/screenshots/search.png",
+      "store/screenshots/contents.png"
+    ],
+    "icon": "store/icon.png",
+    "license": "MIT",
+    "source_repo": "https://github.com/H4W9/CardputerZero_PDFViewer",
+    "author": {
+      "github": "H4W9",
+      "display_name": "H4W9"
+    },
+    "share_code": "PDFV",
+    "permissions": {
+      "camera": false,
+      "microphone": false,
+      "imu": false,
+      "network": false,
+      "additional_hardware": false,
+      "background_service": false,
+      "external_display": true
+    }
+  }
+}

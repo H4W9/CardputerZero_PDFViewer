@@ -1,0 +1,6 @@
+#!/bin/sh
+# APPLaunch wrapper (Exec=bin/czpdf). The Files app runs it with the PDF path
+# as the first argument: bin/czpdf /home/user/Documents/file.pdf
+APP_DIR=/usr/share/APPLaunch/apps/czpdf
+cd "$APP_DIR" || exit 1
+exec python3 -m czpdf "$@"
