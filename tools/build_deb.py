@@ -10,7 +10,6 @@ works with this repo: it reads packaging/meta.env, build.sh and stage.sh).
 import gzip
 import io
 import os
-import py_compile
 import shlex
 import sys
 import tarfile
@@ -100,8 +99,9 @@ def main():
     src_dir = os.path.join(ROOT, "czpdf")
     sources = sorted(f for f in os.listdir(src_dir) if f.endswith(".py"))
     for f in sources:
-        py_compile.compile(os.path.join(src_dir, f), doraise=True,
-                           cfile=os.devnull if os.name != "nt" else None)
+        path = os.path.join(src_dir, f)
+        with open(path, "rb") as fh:
+            compile(fh.read(), path, "exec")   # syntax check only, nothing written
 
     app_dir = "%s/apps/%s" % (PREFIX, pkg)
     desktop = (
