@@ -1,3 +1,5 @@
+[![Build](https://github.com/H4W9/CardputerZero_PDFViewer/actions/workflows/build.yml/badge.svg)](https://github.com/H4W9/CardputerZero_PDFViewer/actions/workflows/build.yml)
+
 # PDF Viewer for the Cardputer Zero
 
 Read PDF files on the M5Stack Cardputer Zero. It is an APPLaunch app and shows up in the launcher as **PDF Viewer**.
@@ -75,6 +77,8 @@ python -m czpdf --screenshots store/screenshots
 ```
 
 `tools\deploy.cmd <ip> <user>` copies the newest .deb to the device and installs it.
+
+GitHub Actions runs the tests and builds the .deb on every push (download it from the run's artifacts). To make a release, bump the version in `packaging/meta.env`, `czpdf/__init__.py` and `app-builder.json`, then push a tag `v<version>`, or run the Build workflow by hand with "Draft a release" ticked. Either way you get a draft release with the .deb attached, to check and publish.
 
 ## License
 

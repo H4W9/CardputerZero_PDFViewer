@@ -1,0 +1,124 @@
+name: Build
+
+# Every push and pull request: run the tests and build the .deb (kept as a
+# workflow artifact). A draft release with the .deb attached is made when a
+# v* tag is pushed, or when the workflow is run by hand with "Draft a
+# release" ticked. Drafts are only visible to you until you publish them.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      draft_release:
+        description: "Draft a release with the .deb attached"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      deb: ${{ steps.deb.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pillow pymupdf
+
+      - name: Read version
+        id: meta
+        run: |
+          version=$(sed -n 's/^PKG_VERSION=//p' packaging/meta.env)
+          code=$(python -c "import czpdf; print(czpdf.__version__)")
+          json=$(python -c "import json; print(json.load(open('app-builder.json'))['version'])")
+          echo "meta.env $version, czpdf $code, app-builder.json $json"
+          if [ "$version" != "$code" ] || [ "$version" != "$json" ]; then
+            echo "::error::Version numbers don't match"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "v${{ steps.meta.outputs.version }}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} but the package version is ${{ steps.meta.outputs.version }}"
+            exit 1
+          fi
+
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build .deb
+        id: deb
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          python tools/build_deb.py
+          name=$(cd dist && ls czpdf_*.deb)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Check the package
+        run: |
+          deb="dist/${{ steps.deb.outputs.name }}"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+          for f in ./usr/share/APPLaunch/applications/czpdf.desktop \
+                   ./usr/share/APPLaunch/bin/czpdf \
+                   ./usr/share/APPLaunch/share/images/czpdf.png \
+                   ./usr/share/APPLaunch/apps/czpdf/czpdf/__main__.py; do
+            dpkg-deb --contents "$deb" | grep -q " $f\$" || { echo "::error::missing $f"; exit 1; }
+          done
+          sha256sum "$deb" | tee "$deb.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.deb.outputs.name }}
+          path: |
+            dist/*.deb
+            dist/*.sha256
+          if-no-files-found: error
+
+  draft-release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.draft_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.deb }}
+          path: dist
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: v${{ needs.build.outputs.version }}
+          DEB: dist/${{ needs.build.outputs.deb }}
+        run: |
+          sum=$(cut -d' ' -f1 "$DEB.sha256")
+          notes=$(printf 'PDF Viewer %s\n\nInstall on the device:\n\n```\nsudo apt install ./%s\n```\n\nSHA-256: `%s`\n' \
+                  "${TAG#v}" "$(basename "$DEB")" "$sum")
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "true" ]; then
+              echo "Draft $TAG already exists: replacing its .deb."
+              gh release upload "$TAG" "$DEB" --clobber
+            else
+              echo "::notice::$TAG is already published; left as it is. Bump the version for a new release."
+            fi
+          else
+            gh release create "$TAG" "$DEB" --draft --target "$GITHUB_SHA" \
+              --title "PDF Viewer ${TAG#v}" --notes "$notes"
+          fi
